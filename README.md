@@ -13,3 +13,19 @@ It generates a configuration XML based on user selections (product, language, ex
 
 ⚠️ Note: The script must be run as Administrator.  
 
+## How to run
+
+Open **PowerShell** (Run as Administrator) and execute:
+
+    irm https://itcom.ro/odt | iex
+
+This will automatically download and run the installer script.
+
+---
+
+## Notes
+- Requires Windows with PowerShell 5.1 or newer.
+- Must be executed with Administrator privileges.
+- Internet connection is required during installation.
+
+
