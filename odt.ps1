@@ -211,7 +211,7 @@ $configNode.AppendChild($updatesNode) | Out-Null
 $configPath = "$env:TEMP\OfficeODT\config.xml"
 if (-not (Test-Path "$env:TEMP\OfficeODT")) { New-Item -Path "$env:TEMP\OfficeODT" -ItemType Directory | Out-Null }
 $xml.Save($configPath)
-Write-Host "Configuration XML created: $configPath" -ForegroundColor Green
+Write-Host "Configuration XML created: $configPath" -ForegroundColor yellow
 
 # ---------- Download setup with progress bar ----------
 $setupUrl = "https://officecdn.microsoft.com/pr/wsus/setup.exe"
@@ -234,23 +234,22 @@ try {
     $bytesRead = 0
     $barLength = 50
 
-    Write-Host "Downloading setup.exe..." -NoNewline
+    Write-Host "Downloading setup.exe..."
 
-    while (($bytesRead = $reader.Read($buffer, 0, $buffer.Length)) -gt 0) {
+ while  (($bytesRead = $reader.Read($buffer, 0, $buffer.Length)) -gt 0) {
         $fileStream.Write($buffer, 0, $bytesRead)
         $totalRead += $bytesRead
 
         $percent = [math]::Round(($totalRead / $totalBytes) * 100)
         $filled = [math]::Round($barLength * $percent / 100)
         $empty = $barLength - $filled
-        $bar = ("*" * $filled) + ("-" * $empty)
-
-        Write-Host "`r[$bar] $percent% " -NoNewline
-    }
+        $bar = ("*" * $filled) + ("-" * $empty) 
+        Write-Host "`r[$bar] $percent% " -NoNewline 
+        }
 
     $reader.Close()
     $fileStream.Close()
-    Write-Host "`nDownload complete: $setupPath" -ForegroundColor Green
+    Write-Host "`nDownload complete: $setupPath" -ForegroundColor Yellow
     $downloadSuccess = $true
 }
 catch {
@@ -258,11 +257,24 @@ catch {
     exit 1
 }
 
+# ========== SUMMARY ==========
+Write-Host ""
+Write-Host "============================================" -ForegroundColor Green
+Write-Host "         SUMMARY OF YOUR SELECTIONS        " -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
+Write-Host "Product:       $productDisplayName"
+Write-Host "Language:      $language"
+Write-Host "Channel:       $productChannel"
+Write-Host "Excluded Apps: $($excludeApps -join ', ')" 
+Write-Host "============================================" -ForegroundColor Green
+Write-Host ""
+
+
 # ---------- Install ----------
 if ($downloadSuccess) {
     try {
         Write-Host "Installing Office..." -ForegroundColor Yellow
-        & $setupPath /configure $configPath
+         & $setupPath /configure $configPath
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Office installation complete!" -ForegroundColor Green
         } else {
@@ -274,6 +286,7 @@ if ($downloadSuccess) {
     }
 }
 
+
 # ---------- Cleanup ----------
 try {
     Remove-Item -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue
@@ -282,5 +295,3 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 3
-
-
