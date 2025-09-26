@@ -3,22 +3,43 @@
 # Improved Version
 # =============================================
 
+param(
+    [switch]$elevated
+)
+
 # ---------- Auto-run as Administrator ----------
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
 ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 
-if (-not $IsAdmin) {
-    Write-Host "The script does not have Administrator rights. I am trying to relaunch it..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 2
+if (-not $IsAdmin -and -not $elevated) {
+    Write-Host "The script does not have Administrator rights." -ForegroundColor Red
+    Write-Host "It will automatically relaunch with elevated privileges..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 3   # Pauză ca utilizatorul să vadă mesajul
+    
     # Obține calea către scriptul curent
     $scriptPath = $MyInvocation.MyCommand.Definition
 
-    # Relansează scriptul ca Administrator
-    Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
-    
-    exit 0  # Oprește instanța curentă
+    try {
+        # Relansează scriptul cu flagul -elevated
+        Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -elevated"
+        exit 0
+    }
+    catch {
+        Write-Host "Relaunch with Administrator rights failed or was canceled." -ForegroundColor Red
+        Read-Host "Press Enter to close."
+        exit 1
+    }
+}
+elseif (-not $IsAdmin -and $elevated) {
+    # Dacă a fost deja încercată ridicarea și nu s-a reușit
+    Write-Host "Error: Script does not run with Administrator privileges, even though a relaunch was attempted." -ForegroundColor Red
+    Read-Host "Press Enter to close."
+    exit 1
 }
 
+# ---------- Aici continuă scriptul normal ----------
+Write-Host "Success! The script is now running with Administrator rights." -ForegroundColor Green
+Start-Sleep -Seconds 2
 
 Clear-Host
 Write-Host "============================================" -ForegroundColor DarkCyan
@@ -277,4 +298,5 @@ Write-Host "or quickly with winget using the command:" -ForegroundColor Green
 Write-Host ""
 Write-Host "    winget install -e --id=9NRX63209R7B --source=msstore --accept-package-agreements" -ForegroundColor White
 Write-Host "============================================" -ForegroundColor Yellow
+
 
