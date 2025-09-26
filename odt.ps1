@@ -1,7 +1,7 @@
-# ===============================
+# =============================================
 # Office Deployment Tool Installer (Native XML)
 # Improved Version
-# ===============================
+# =============================================
 
 # ---------- Auto-run as Administrator ----------
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -277,3 +277,4 @@ Write-Host "or quickly with winget using the command:" -ForegroundColor Green
 Write-Host ""
 Write-Host "    winget install -e --id=9NRX63209R7B --source=msstore --accept-package-agreements" -ForegroundColor White
 Write-Host "============================================" -ForegroundColor Yellow
+
