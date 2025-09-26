@@ -295,3 +295,5 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 3
+exit
+
