@@ -7,36 +7,114 @@ param(
     [switch]$elevated
 )
 
-# ---------- Auto-run as Administrator ----------
+# ---------- Determinări inițiale ----------
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
 ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 
+# Funcție mică pentru afișare explicativă
+function Show-And-Wait($text, $seconds = 2) {
+    Write-Host $text
+    Start-Sleep -Seconds $seconds
+}
+
+# ---------- Caz: nu suntem admin și nu s-a încercat relansarea ----------
 if (-not $IsAdmin -and -not $elevated) {
     Write-Host "The script does not have Administrator rights." -ForegroundColor Red
     Write-Host "It will automatically relaunch with elevated privileges..." -ForegroundColor Yellow
     Start-Sleep -Seconds 2
-    
-    $scriptPath = $MyInvocation.MyCommand.Definition
 
-    try {
-        Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -elevated"
-        exit 0
+    # Încearcă să obținem calea scriptului (funcționează când rulezi din fișier)
+    $scriptPath = $PSCommandPath  # preferabil față de MyInvocation când e script pe disc
+
+    if ([string]::IsNullOrEmpty($scriptPath)) {
+        # Probabil rulăm prin iex (în memorie). Încercăm să extragem URL din linia de comandă
+        $invocationLine = $MyInvocation.Line
+
+        # Folosim here-string pentru regex ca să nu avem probleme cu ghilimelele
+        $urlPattern = @'
+(?i)(?:\birm\b|\bInvoke-RestMethod\b)\s*(?:-Uri\s*)?(?:["'])(?<u>https?://[^"']+)(?:["'])
+'@
+
+        try {
+            $m = [regex]::Match($invocationLine, $urlPattern)
+        }
+        catch {
+            $m = $null
+        }
+
+        if ($m -and $m.Success) {
+            $url = $m.Groups['u'].Value
+            # Construim comanda de relansare exactă și o rulăm în PowerShell elevat
+            $remoteCmd = "irm '$url' | iex"
+
+            try {
+                # Furnizăm ArgumentList ca array ca să evităm probleme de quoting
+                Start-Process -FilePath powershell -Verb RunAs -ArgumentList @(
+                    "-NoProfile"
+                    "-ExecutionPolicy"
+                    "Bypass"
+                    "-Command"
+                    ($remoteCmd + " -elevated")
+                )
+                exit 0
+            }
+            catch {
+                Write-Host "Relansarea cu drepturi de Administrator a fost anulată sau a eșuat." -ForegroundColor Red
+                Read-Host "Apasă Enter pentru a închide"
+                exit 1
+            }
+        }
+        else {
+            # Nu am putut găsi URL-ul; oferim instrucțiuni explicite
+            Write-Host "Cannot automatically relaunch: script is running in memory (piped via iex) and could not extract URL." -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Suggestions:"
+            Write-Host "  1) Download the script and run it as a file with 'Run as administrator', or"
+            Write-Host "  2) Open PowerShell with Administrator rights and run the original command:"
+            Write-Host ""
+            Write-Host "    irm https://itcom.ro/odt | iex"
+            Write-Host ""
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
     }
-    catch {
-        Write-Host "Relaunch with Administrator rights failed or was canceled." -ForegroundColor Red
-        Read-Host "Press Enter to close"
-        exit 1
+    else {
+        # Avem un fișier pe disc — relansăm fișierul
+        try {
+            Start-Process -FilePath powershell -Verb RunAs -ArgumentList @(
+                "-NoProfile"
+                "-ExecutionPolicy"
+                "Bypass"
+                "-File"
+                $scriptPath
+                "-elevated"
+            )
+            exit 0
+        }
+        catch {
+            Write-Host "Relaunch with Administrator rights was canceled or failed." -ForegroundColor Red
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
     }
 }
-elseif (-not $IsAdmin -and $elevated) {
-    Write-Host "Error: Script does not run with Administrator rights, even though relaunch was attempted." -ForegroundColor Red
-    Read-Host "Press Enter to close"
+
+# ---------- Caz: am încercat relansarea dar tot nu suntem admin ----------
+if (-not $IsAdmin -and $elevated) {
+    Write-Host "Error: The script does not run with Administrator rights, even if a relaunch was attempted." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
     exit 1
 }
-elseif ($IsAdmin -and $elevated) {
-    # Afișează succesul doar dacă s-a relansat
-    Write-Host "Success! The script is now running with Administrator rights." -ForegroundColor Green
+
+# ---------- Caz: suntem admin ----------
+if ($IsAdmin -and $elevated) {
+    Write-Host "Success! The script is now running with Administrator rights (automatically relaunched)." -ForegroundColor Green
     Start-Sleep -Seconds 2
+}
+elseif ($IsAdmin -and -not $elevated) {
+    # rulare manuală cu Run as Admin — afișăm un mesaj mai discret sau deloc
+    Write-Host "The script runs with Administrator rights (manually started)." -ForegroundColor DarkGreen
+    Start-Sleep -Seconds 1
 }
 
 # ---------- Aici continuă scriptul normal ----------
@@ -297,6 +375,7 @@ Write-Host "or quickly with winget using the command:" -ForegroundColor Green
 Write-Host ""
 Write-Host "    winget install -e --id=9NRX63209R7B --source=msstore --accept-package-agreements" -ForegroundColor White
 Write-Host "============================================" -ForegroundColor Yellow
+
 
 
 
