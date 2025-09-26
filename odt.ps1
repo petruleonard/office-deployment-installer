@@ -12,9 +12,9 @@ $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIde
 ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 
 if (-not $IsAdmin -and -not $elevated) {
-    Write-Host "Scriptul nu are drepturi de Administrator." -ForegroundColor Red
-    Write-Host "Se va relansa automat cu privilegii elevate..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 3
+    Write-Host "The script does not have Administrator rights." -ForegroundColor Red
+    Write-Host "It will automatically relaunch with elevated privileges..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 2
     
     $scriptPath = $MyInvocation.MyCommand.Definition
 
@@ -23,25 +23,23 @@ if (-not $IsAdmin -and -not $elevated) {
         exit 0
     }
     catch {
-        Write-Host "Relansarea cu drepturi de Administrator a eșuat sau a fost anulată." -ForegroundColor Red
-        Read-Host "Apasă Enter pentru a închide"
+        Write-Host "Relaunch with Administrator rights failed or was canceled." -ForegroundColor Red
+        Read-Host "Press Enter to close"
         exit 1
     }
 }
 elseif (-not $IsAdmin -and $elevated) {
-    Write-Host "Eroare: Scriptul nu rulează cu privilegii de Administrator, chiar dacă s-a încercat relansarea." -ForegroundColor Red
-    Read-Host "Apasă Enter pentru a închide"
+    Write-Host "Error: Script does not run with Administrator rights, even though relaunch was attempted." -ForegroundColor Red
+    Read-Host "Press Enter to close"
     exit 1
 }
-elseif ($IsAdmin) {
-    Write-Host "Succes! Scriptul rulează acum cu drepturi de Administrator." -ForegroundColor Green
-Start-Sleep -Seconds 2
+elseif ($IsAdmin -and $elevated) {
+    # Afișează succesul doar dacă s-a relansat
+    Write-Host "Success! The script is now running with Administrator rights." -ForegroundColor Green
+    Start-Sleep -Seconds 2
 }
 
 # ---------- Aici continuă scriptul normal ----------
-Write-Host "Success! The script is now running with Administrator rights." -ForegroundColor Green
-Start-Sleep -Seconds 2
-
 Clear-Host
 Write-Host "============================================" -ForegroundColor DarkCyan
 Write-Host "      Office Deployment Tool Installer     " -ForegroundColor Yellow
@@ -299,6 +297,7 @@ Write-Host "or quickly with winget using the command:" -ForegroundColor Green
 Write-Host ""
 Write-Host "    winget install -e --id=9NRX63209R7B --source=msstore --accept-package-agreements" -ForegroundColor White
 Write-Host "============================================" -ForegroundColor Yellow
+
 
 
 
