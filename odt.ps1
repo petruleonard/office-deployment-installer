@@ -1,54 +1,40 @@
 # =============================================
 # Office Deployment Tool Installer (Native XML)
-# Improved Version
 # =============================================
 
 param(
     [switch]$elevated
 )
 
-# ---------- Determinări inițiale ----------
+# ---------- Initial Checks ----------
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
 ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 
-# Funcție mică pentru afișare explicativă
-function Show-And-Wait($text, $seconds = 2) {
+function Show-And-Wait($text, $seconds = 1) {
     Write-Host $text
     Start-Sleep -Seconds $seconds
 }
 
-# ---------- Caz: nu suntem admin și nu s-a încercat relansarea ----------
+# ---------- Elevation Handling ----------
+
 if (-not $IsAdmin -and -not $elevated) {
     Write-Host "The script does not have Administrator rights." -ForegroundColor Red
-    Write-Host "It will automatically relaunch with elevated privileges..." -ForegroundColor Yellow
+    Write-Host "Attempting to relaunch with elevated privileges..." -ForegroundColor Yellow
     Start-Sleep -Seconds 2
 
-    # Încearcă să obținem calea scriptului (funcționează când rulezi din fișier)
-    $scriptPath = $PSCommandPath  # preferabil față de MyInvocation când e script pe disc
+    $scriptPath = $PSCommandPath
 
     if ([string]::IsNullOrEmpty($scriptPath)) {
-        # Probabil rulăm prin iex (în memorie). Încercăm să extragem URL din linia de comandă
         $invocationLine = $MyInvocation.Line
-
-        # Folosim here-string pentru regex ca să nu avem probleme cu ghilimelele
         $urlPattern = @'
 (?i)(?:\birm\b|\bInvoke-RestMethod\b)\s*(?:-Uri\s*)?(?:["'])(?<u>https?://[^"']+)(?:["'])
 '@
-
-        try {
-            $m = [regex]::Match($invocationLine, $urlPattern)
-        }
-        catch {
-            $m = $null
-        }
+        try { $m = [regex]::Match($invocationLine, $urlPattern) } catch { $m = $null }
 
         if ($m -and $m.Success) {
             $url = $m.Groups['u'].Value
-            # Construim comanda de relansare exactă și o rulăm în PowerShell elevat
             $remoteCmd = "irm '$url' | iex"
-
             try {
-                # Furnizăm ArgumentList ca array ca să evităm probleme de quoting
                 Start-Process -FilePath powershell -Verb RunAs -ArgumentList @(
                     "-NoProfile"
                     "-ExecutionPolicy"
@@ -59,27 +45,16 @@ if (-not $IsAdmin -and -not $elevated) {
                 exit 0
             }
             catch {
-                Write-Host "Relansarea cu drepturi de Administrator a fost anulată sau a eșuat." -ForegroundColor Red
-                Read-Host "Apasă Enter pentru a închide"
+                Write-Host "Relaunch with Admin rights was canceled or failed." -ForegroundColor Red
+                Read-Host "Press Enter to exit"
                 exit 1
             }
-        }
-        else {
-            # Nu am putut găsi URL-ul; oferim instrucțiuni explicite
-            Write-Host "Cannot automatically relaunch: script is running in memory (piped via iex) and could not extract URL." -ForegroundColor Red
-            Write-Host ""
-            Write-Host "Suggestions:"
-            Write-Host "  1) Download the script and run it as a file with 'Run as administrator', or"
-            Write-Host "  2) Open PowerShell with Administrator rights and run the original command:"
-            Write-Host ""
-            Write-Host "    irm https://itcom.ro/odt | iex"
-            Write-Host ""
+        } else {
+            Write-Host "Cannot automatically relaunch. Run the script as a file with 'Run as administrator'." -ForegroundColor Red
             Read-Host "Press Enter to exit"
             exit 1
         }
-    }
-    else {
-        # Avem un fișier pe disc — relansăm fișierul
+    } else {
         try {
             Start-Process -FilePath powershell -Verb RunAs -ArgumentList @(
                 "-NoProfile"
@@ -92,37 +67,72 @@ if (-not $IsAdmin -and -not $elevated) {
             exit 0
         }
         catch {
-            Write-Host "Relaunch with Administrator rights was canceled or failed." -ForegroundColor Red
+            Write-Host "Relaunch with Admin rights was canceled or failed." -ForegroundColor Red
             Read-Host "Press Enter to exit"
             exit 1
         }
     }
 }
 
-# ---------- Caz: am încercat relansarea dar tot nu suntem admin ----------
 if (-not $IsAdmin -and $elevated) {
-    Write-Host "Error: The script does not run with Administrator rights, even if a relaunch was attempted." -ForegroundColor Red
+    Write-Host "Error: The script does not run with Administrator rights even after relaunch." -ForegroundColor Red
     Read-Host "Press Enter to exit"
     exit 1
 }
 
-# ---------- Caz: suntem admin ----------
 if ($IsAdmin -and $elevated) {
-    Write-Host "Success! The script is now running with Administrator rights (automatically relaunched)." -ForegroundColor Green
-    Start-Sleep -Seconds 2
-}
-elseif ($IsAdmin -and -not $elevated) {
-    # rulare manuală cu Run as Admin — afișăm un mesaj mai discret sau deloc
-    Write-Host "The script runs with Administrator rights (manually started)." -ForegroundColor DarkGreen
+    Write-Host "Success! Running with Administrator rights." -ForegroundColor Green
+    Start-Sleep -Seconds 1
+} elseif ($IsAdmin -and -not $elevated) {
+    Write-Host "Running with Administrator rights (manual start)." -ForegroundColor DarkGreen
     Start-Sleep -Seconds 1
 }
 
-# ---------- Aici continuă scriptul normal ----------
+# ---------- The normal script continues here ----------
+
 Clear-Host
 Write-Host "============================================" -ForegroundColor DarkCyan
 Write-Host "      Office Deployment Tool Installer     " -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor DarkCyan
 Write-Host ""
+
+# ---------- UI Functions ----------
+function Show-Menu($title, $options) {
+    Write-Host ""
+    Write-Host $title -ForegroundColor Cyan
+    Write-Host "--------------------------------------------"
+    foreach ($key in $options.Keys) {
+        if ($options[$key] -is [string]) {
+            Write-Host "$key) $($options[$key])"
+        } else {
+            Write-Host "$key) $($options[$key].Name)"
+        }
+    }
+    Write-Host "--------------------------------------------"
+}
+
+function Get-Choice($options, $prompt) {
+    while ($true) {
+        $choice = Read-Host -Prompt $prompt
+        if ($options.Keys -contains $choice) { return $choice }
+        Write-Host "Invalid choice. Try again." -ForegroundColor Yellow
+    }
+}
+
+function Get-MultiChoice($options, $prompt) {
+    $validKeys = $options.Keys | ForEach-Object { [string]$_ }
+    while ($true) {
+        $raw = Read-Host -Prompt $prompt
+        if ([string]::IsNullOrWhiteSpace($raw)) { return @() }
+        $parts = $raw -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+        $invalid = $parts | Where-Object { $validKeys -notcontains $_ }
+        if ($invalid) {
+            Write-Host "Invalid selection: $($invalid -join ', '). Try again." -ForegroundColor Yellow
+            continue
+        }
+        return $parts | ForEach-Object { $options[$_] }
+    }
+}
 
 # ---------- Data ----------
 $products = [ordered]@{
@@ -150,159 +160,75 @@ $appSettingsMap = [ordered]@{
     "Publisher" = @{ Key="software\microsoft\office\16.0\publisher\options"; Name="pubdefaultview"; Value="1"; Type="REG_DWORD"; App="pub16"; Id="L_DefaultView" }
 }
 
-# ---------- Functions ----------
-function Show-Menu($title, $options) {
-    Write-Host ""
-    Write-Host $title -ForegroundColor Cyan
-    Write-Host "--------------------------------------------"
-    foreach ($key in $options.Keys) {
-        if ($options[$key] -is [string]) {
-            Write-Host "$key) $($options[$key])"
-        } else {
-            Write-Host "$key) $($options[$key].Name)"
-        }
-    }
-    Write-Host "--------------------------------------------"
-}
-
-function Get-Choice($options, $prompt) {
-    $choice = Read-Host -Prompt $prompt
-    if ($options.Keys -contains $choice) { return $choice }
-    Write-Host "Invalid choice, exiting..." -ForegroundColor Red
-    exit 1
-}
-
-# ---------- Step 1: Product ----------
+# ---------- Steps ----------
 Show-Menu "[1/3] Select product:" $products
 $prodChoice = Get-Choice $products "Enter option (1-$($products.Count))"
 $productID  = $products[$prodChoice].ID
 $productChannel  = $products[$prodChoice].Channel
 $productDisplayName = $products[$prodChoice].Name
 
-# ---------- Step 2: Language ----------
 Show-Menu "[2/3] Select language:" $languages
 $langChoice = Get-Choice $languages "Enter option (1-$($languages.Count))"
 $language = $languages[$langChoice]
 
-# ---------- Step 3: Apps ----------
 Show-Menu "[3/3] Select apps to exclude (comma separated, or Enter for none):" $apps
-$excludeChoice = Read-Host -Prompt "Enter option (ex: 1,3)"
-$excludeApps = @()
+$excludeApps = Get-MultiChoice $apps "Enter apps to exclude (e.g., 1,3) or press Enter for none"
+Write-Host "You chose to exclude: $($excludeApps -join ', ')"
 
-if ($excludeChoice) {
-    foreach ($key in $excludeChoice.Split(",") | ForEach-Object { $_.Trim() }) {
-        if ($apps.Keys -contains $key) {
-            $excludeApps += $apps[$key]
-        } else {
-            Write-Host "Warning: Invalid app selection '$key' ignored." -ForegroundColor Yellow
-        }
-    }
-}
-
-# ---------- Step 4: Build native XML ----------
+# ---------- Build XML ----------
 $xml = New-Object System.Xml.XmlDocument
-
-# Root Configuration
 $configNode = $xml.CreateElement("Configuration")
 $xml.AppendChild($configNode) | Out-Null
 
-# Add node
 $addNode = $xml.CreateElement("Add")
 $addNode.SetAttribute("OfficeClientEdition", "64")
 $addNode.SetAttribute("Channel", $productChannel)
 $configNode.AppendChild($addNode) | Out-Null
 
-# Product node
 $productNode = $xml.CreateElement("Product")
 $productNode.SetAttribute("ID", $productID)
 $addNode.AppendChild($productNode) | Out-Null
 
-# Language node
 $langNode = $xml.CreateElement("Language")
 $langNode.SetAttribute("ID", $language)
 $productNode.AppendChild($langNode) | Out-Null
 
-# Excluded apps
-foreach ($app in $excludeApps) {
+foreach ($app in $excludeApps + @("Groove","OneDrive","Lync","OneNote")) {
     $excludeNode = $xml.CreateElement("ExcludeApp")
     $excludeNode.SetAttribute("ID", $app)
     $productNode.AppendChild($excludeNode) | Out-Null
 }
 
-# Always exclude these
-foreach ($app in "Groove","OneDrive","Lync","OneNote") {
-    $excludeNode = $xml.CreateElement("ExcludeApp")
-    $excludeNode.SetAttribute("ID", $app)
-    $productNode.AppendChild($excludeNode) | Out-Null
-}
-
-# Display node
 $displayNode = $xml.CreateElement("Display")
 $displayNode.SetAttribute("Level", "Full")
 $displayNode.SetAttribute("AcceptEULA", "TRUE")
 $configNode.AppendChild($displayNode) | Out-Null
 
-# Updates node
 $updatesNode = $xml.CreateElement("Updates")
 $updatesNode.SetAttribute("Enabled", "TRUE")
 $configNode.AppendChild($updatesNode) | Out-Null
 
-# RemoveMSI node
-$removeNode = $xml.CreateElement("RemoveMSI")
-$configNode.AppendChild($removeNode) | Out-Null
-
-# AppSettings node
-$appSettingsNode = $xml.CreateElement("AppSettings")
-$configNode.AppendChild($appSettingsNode) | Out-Null
-
-foreach ($app in $appSettingsMap.Keys) {
-    if ($excludeApps -notcontains $app) {
-        $setting = $appSettingsMap[$app]
-        $userNode = $xml.CreateElement("User")
-        $userNode.SetAttribute("Key", $setting.Key)
-        $userNode.SetAttribute("Name", $setting.Name)
-        $userNode.SetAttribute("Value", $setting.Value)
-        $userNode.SetAttribute("Type", $setting.Type)
-        $userNode.SetAttribute("App", $setting.App)
-        $userNode.SetAttribute("Id", $setting.Id)
-        $appSettingsNode.AppendChild($userNode) | Out-Null
-    }
-}
-
-# ========== SUMMARY ==========
-Write-Host ""
-Write-Host "============================================" -ForegroundColor Green
-Write-Host "        SUMMARY OF YOUR SELECTIONS        " -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Green
-Write-Host ("Product:      {0} (ID: {1})" -f $productDisplayName, $productID)
-Write-Host "Language:     $language"
-Write-Host "Channel:      $productChannel"
-Write-Host "Excluded Apps: $($excludeApps -join ', ')"
-Write-Host "============================================" -ForegroundColor Green
-Write-Host ""
-
-# Save XML
-$folderPath = "$env:TEMP\OfficeODT"
-if (-not (Test-Path $folderPath)) { New-Item -Path $folderPath -ItemType Directory | Out-Null }
-$configPath = "$folderPath\config.xml"
+$configPath = "$env:TEMP\OfficeODT\config.xml"
+if (-not (Test-Path "$env:TEMP\OfficeODT")) { New-Item -Path "$env:TEMP\OfficeODT" -ItemType Directory | Out-Null }
 $xml.Save($configPath)
 Write-Host "Configuration XML created: $configPath" -ForegroundColor Green
 
-# ---------- Step 5: Download setup ----------
+# ---------- Download setup with progress bar ----------
 $setupUrl = "https://officecdn.microsoft.com/pr/wsus/setup.exe"
-$setupPath = "$folderPath\setup.exe"
+$setupPath = "$env:TEMP\OfficeODT\setup.exe"
 $downloadSuccess = $false
 
-try {
-    # Creează fișier gol
-    $fileStream = [System.IO.File]::Create($setupPath)
+# Ensure folder exists
+$folderPath = "$env:TEMP\OfficeODT"
+if (-not (Test-Path $folderPath)) { New-Item -Path $folderPath -ItemType Directory | Out-Null }
 
-    # Obține dimensiunea totală
+try {
+    # Get total size
     $response = Invoke-WebRequest -Uri $setupUrl -Method Head
     $totalBytes = [int64]$response.Headers['Content-Length']
 
-    # Deschide stream pentru citire
     $reader = [System.Net.HttpWebRequest]::Create($setupUrl).GetResponse().GetResponseStream()
+    $fileStream = [System.IO.File]::Create($setupPath)
     $buffer = New-Object byte[] 8192
     $totalRead = 0
     $bytesRead = 0
@@ -332,51 +258,28 @@ catch {
     exit 1
 }
 
-# ---------- Step 6: Install ----------
-$installSuccess = $false
+# ---------- Install ----------
 if ($downloadSuccess) {
     try {
         Write-Host "Installing Office..." -ForegroundColor Yellow
-        & $setupPath /configure $configPath
+       # & $setupPath /configure $configPath
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Office installation complete!" -ForegroundColor Green
-            $installSuccess = $true
         } else {
             Write-Host "Office installation failed! (Exit code $LASTEXITCODE)" -ForegroundColor Red
-            $installSuccess = $false
         }
     }
     catch {
         Write-Host "ERROR: Installation failed - $_" -ForegroundColor Red
-        $installSuccess = $false
     }
 }
 
-# ---------- Step 7: Cleanup ----------
-if ($installSuccess) {
-    try {
-        Remove-Item -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "Temporary files deleted." -ForegroundColor Cyan
-    } catch {
-        Write-Host "Warning: Could not delete temporary files. Manual cleanup may be needed." -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "Temporary files NOT deleted for troubleshooting." -ForegroundColor Yellow
+
+# ---------- Cleanup ----------
+try {
+    Remove-Item -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "Temporary files deleted." -ForegroundColor Cyan
+} catch {
+    Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
-
-# ---------- Step 8: Info ----------
-Write-Host ""
-Write-Host "============================================" -ForegroundColor Yellow
-Write-Host "NOTE: Classic Outlook is part of the Office suite." -ForegroundColor Cyan
-Write-Host "      New Outlook for Windows is NOT included." -ForegroundColor Cyan
-Write-Host ""
-Write-Host "For the new Outlook, install from Microsoft Store" -ForegroundColor Green
-Write-Host "or quickly with winget using the command:" -ForegroundColor Green
-Write-Host ""
-Write-Host "    winget install -e --id=9NRX63209R7B --source=msstore --accept-package-agreements" -ForegroundColor White
-Write-Host "============================================" -ForegroundColor Yellow
-
-
-
-
-
+Start-Sleep -Seconds 3
