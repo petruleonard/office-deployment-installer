@@ -219,7 +219,7 @@ Write-Host "`nDownload complete: $setupPath" -ForegroundColor Green
 # ---------- Step 6: Install ----------
 Write-Host "Installing Office..." -ForegroundColor Yellow
 & $setupPath /configure $configPath
-Write-Host "Office installation complete!" -ForegroundColor Gree
+Write-Host "Office installation complete!" -ForegroundColor Green
 
 # ---------- Step 7: Cleanup ----------
 Remove-Item -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue
@@ -236,3 +236,4 @@ Write-Host "or quickly with winget using the command:" -ForegroundColor Green
 Write-Host ""
 Write-Host "    winget install -e --id=9NRX63209R7B --source=msstore --accept-package-agreements" -ForegroundColor White
 Write-Host "============================================" -ForegroundColor Yellow
+
