@@ -17,7 +17,7 @@ It generates a configuration XML based on user selections (product, language, ex
 
 Open **PowerShell** (Run as Administrator) and execute:
 
-    irm https://itcom.ro/odt | iex
+   [irm https://raw.githubusercontent.com/petruleonard/office-deployment-installer/refs/heads/main/odt.ps1 | iex
 
 This will automatically download and run the installer script.
 
