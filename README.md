@@ -10,7 +10,7 @@ A console-based progress bar is displayed during setup.exe download.
 
 Open **PowerShell** (Run as Administrator) and execute:
 
-    irm https://raw.githubusercontent.com/petruleonard/office-deployment-installer/refs/heads/main/odt.ps1 iex
+    irm https://raw.githubusercontent.com/petruleonard/office-deployment-installer/refs/heads/main/odt.ps1 | iex
 
 This will automatically download and run the installer script.
 
