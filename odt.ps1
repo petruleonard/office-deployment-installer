@@ -262,7 +262,7 @@ catch {
 if ($downloadSuccess) {
     try {
         Write-Host "Installing Office..." -ForegroundColor Yellow
-       # & $setupPath /configure $configPath
+         & $setupPath /configure $configPath
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Office installation complete!" -ForegroundColor Green
         } else {
@@ -283,3 +283,4 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 3
+
