@@ -5,6 +5,8 @@
 param(
     [switch]$elevated
 )
+[System.Console]::CursorVisible = $false
+
 
 # ---------- Initial Checks ----------
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -115,7 +117,9 @@ function Get-Choice($options, $prompt) {
     while ($true) {
         $choice = Read-Host -Prompt $prompt
         if ($options.Keys -contains $choice) { return $choice }
-        Write-Host "Invalid choice. Try again." -ForegroundColor Yellow
+        [Console]::SetCursorPosition(0, [Console]::CursorTop -1)
+        Write-Host (" " * ($prompt.Length + $choice.Length + 5)) -NoNewline
+        [Console]::SetCursorPosition(0, [Console]::CursorTop)
     }
 }
 
@@ -126,11 +130,12 @@ function Get-MultiChoice($options, $prompt) {
         if ([string]::IsNullOrWhiteSpace($raw)) { return @() }
         $parts = $raw -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
         $invalid = $parts | Where-Object { $validKeys -notcontains $_ }
-        if ($invalid) {
-            Write-Host "Invalid selection: $($invalid -join ', '). Try again." -ForegroundColor Yellow
-            continue
+        if (-not $invalid) {
+            return $parts | ForEach-Object { $options[$_] }
         }
-        return $parts | ForEach-Object { $options[$_] }
+        [Console]::SetCursorPosition(0, [Console]::CursorTop -1)
+        Write-Host (" " * ($prompt.Length + $raw.Length + 5)) -NoNewline
+        [Console]::SetCursorPosition(0, [Console]::CursorTop)
     }
 }
 
@@ -269,7 +274,6 @@ Write-Host "Excluded Apps: $($excludeApps -join ', ')"
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
 
-
 # ---------- Install ----------
 if ($downloadSuccess) {
     try {
@@ -295,5 +299,3 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 3
-exit
-
