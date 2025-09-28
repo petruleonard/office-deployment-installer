@@ -18,5 +18,5 @@ This will automatically download and run the installer script.
 
 ## Notes
 - Requires Windows with PowerShell 5.1 or newer.
-- Must be executed with Administrator privileges.
+- Can be executed without administrator privileges.
 - Internet connection is required during installation.
