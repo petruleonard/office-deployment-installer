@@ -52,7 +52,7 @@ if (-not $IsAdmin -and -not $elevated) {
                 exit 1
             }
         } else {
-            Write-Host "Cannot automatically relaunch. Run the script as a file with 'Run as administrator'." -ForegroundColor Red
+            Write-Host "Cannot automatically relaunch. Run the script with 'Run as administrator'." -ForegroundColor Red
             Read-Host "Press Enter to exit"
             exit 1
         }
@@ -299,3 +299,4 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 3
+
