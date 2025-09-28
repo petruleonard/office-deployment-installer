@@ -8,6 +8,7 @@ param(
 [System.Console]::CursorVisible = $false
 
 # ---------- Initial Checks ----------
+
 # Check and run the script as admin if required
 $myWindowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
 $myWindowsPrincipal = New-Object System.Security.Principal.WindowsPrincipal($myWindowsID)
@@ -31,6 +32,7 @@ cls
 }
 
 # ---------- The normal script continues here ----------
+
 Clear-Host
 Write-Host "============================================" -ForegroundColor DarkCyan
 Write-Host "      Office Deployment Tool Installer     " -ForegroundColor Yellow
@@ -229,7 +231,6 @@ if ($downloadSuccess) {
     }
 }
 
-
 # ---------- Cleanup ----------
 try {
     Remove-Item -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue
@@ -238,5 +239,3 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 3
-
-
