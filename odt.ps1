@@ -7,91 +7,30 @@ param(
 )
 [System.Console]::CursorVisible = $false
 
-
 # ---------- Initial Checks ----------
-$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+# Check and run the script as admin if required
+$myWindowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+$myWindowsPrincipal = New-Object System.Security.Principal.WindowsPrincipal($myWindowsID)
+$adminRole = [System.Security.Principal.WindowsBuiltInRole]::Administrator
 
-function Show-And-Wait($text, $seconds = 1) {
-    Write-Host $text
-    Start-Sleep -Seconds $seconds
-}
-
-# ---------- Elevation Handling ----------
-
-if (-not $IsAdmin -and -not $elevated) {
-    Write-Host "The script does not have Administrator rights." -ForegroundColor Red
-    Write-Host "Attempting to relaunch with elevated privileges..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 2
-
-    $scriptPath = $PSCommandPath
-
-    if ([string]::IsNullOrEmpty($scriptPath)) {
-        $invocationLine = $MyInvocation.Line
-        $urlPattern = @'
-(?i)(?:\birm\b|\bInvoke-RestMethod\b)\s*(?:-Uri\s*)?(?:["'])(?<u>https?://[^"']+)(?:["'])
-'@
-        try { $m = [regex]::Match($invocationLine, $urlPattern) } catch { $m = $null }
-
-        if ($m -and $m.Success) {
-            $url = $m.Groups['u'].Value
-            $remoteCmd = "irm '$url' | iex"
-            try {
-                Start-Process -FilePath powershell -Verb RunAs -ArgumentList @(
-                    "-NoProfile"
-                    "-ExecutionPolicy"
-                    "Bypass"
-                    "-Command"
-                    ($remoteCmd + " -elevated")
-                )
-                exit 0
-            }
-            catch {
-                Write-Host "Relaunch with Admin rights was canceled or failed." -ForegroundColor Red
-                Read-Host "Press Enter to exit"
-                exit 1
-            }
-        } else {
-            Write-Host "Cannot automatically relaunch. Run the script with 'Run as administrator'." -ForegroundColor Red
-            Read-Host "Press Enter to exit"
-            exit 1
-        }
-    } else {
-        try {
-            Start-Process -FilePath powershell -Verb RunAs -ArgumentList @(
-                "-NoProfile"
-                "-ExecutionPolicy"
-                "Bypass"
-                "-File"
-                $scriptPath
-                "-elevated"
-            )
-            exit 0
-        }
-        catch {
-            Write-Host "Relaunch with Admin rights was canceled or failed." -ForegroundColor Red
-            Read-Host "Press Enter to exit"
-            exit 1
-        }
+if (-not $myWindowsPrincipal.IsInRole($adminRole)) {
+    Write-Host "Restarting script with administrator privileges..."
+        Start-Sleep -Seconds 1
+cls 
+    try {
+        $newProcess = New-Object System.Diagnostics.ProcessStartInfo "PowerShell"
+        $newProcess.Arguments = $myInvocation.MyCommand.Definition
+        $newProcess.Verb = "runas"
+        [System.Diagnostics.Process]::Start($newProcess) | Out-Null
+        exit
+    } catch {
+        Write-Host "Administrator rights were not granted. The script cannot continue." -ForegroundColor Red
+        Start-Sleep -Seconds 2
+        exit 1
     }
 }
 
-if (-not $IsAdmin -and $elevated) {
-    Write-Host "Error: The script does not run with Administrator rights even after relaunch." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit 1
-}
-
-if ($IsAdmin -and $elevated) {
-    Write-Host "Success! Running with Administrator rights." -ForegroundColor Green
-    Start-Sleep -Seconds 1
-} elseif ($IsAdmin -and -not $elevated) {
-    Write-Host "Running with Administrator rights (manual start)." -ForegroundColor DarkGreen
-    Start-Sleep -Seconds 1
-}
-
 # ---------- The normal script continues here ----------
-
 Clear-Host
 Write-Host "============================================" -ForegroundColor DarkCyan
 Write-Host "      Office Deployment Tool Installer     " -ForegroundColor Yellow
@@ -299,4 +238,5 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 3
+
 
