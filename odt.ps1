@@ -1,3 +1,4 @@
+
 # =============================================
 # Office Deployment Tool Installer (Native XML)
 # =============================================
@@ -119,7 +120,7 @@ $language = $languages[$langChoice]
 
 Show-Menu "[3/3] Select apps to exclude (comma separated, or Enter for none):" $apps
 $excludeApps = Get-MultiChoice $apps "Enter apps to exclude (e.g., 1,3) or press Enter for none"
-Write-Host "You chose to exclude: $($excludeApps -join ', ')"
+
 
 # ---------- Build XML ----------
 $xml = New-Object System.Xml.XmlDocument
@@ -159,7 +160,7 @@ if (-not (Test-Path "$env:TEMP\OfficeODT")) { New-Item -Path "$env:TEMP\OfficeOD
 $xml.Save($configPath)
 Write-Host "Configuration XML created: $configPath" -ForegroundColor yellow
 
-# ---------- Download setup with progress bar ----------
+# ---------- Download setup with colorful progress bar ----------
 $setupUrl = "https://officecdn.microsoft.com/pr/wsus/setup.exe"
 $setupPath = "$env:TEMP\OfficeODT\setup.exe"
 $downloadSuccess = $false
@@ -178,20 +179,32 @@ try {
     $buffer = New-Object byte[] 8192
     $totalRead = 0
     $bytesRead = 0
-    $barLength = 50
 
     Write-Host "Downloading setup.exe..."
 
- while  (($bytesRead = $reader.Read($buffer, 0, $buffer.Length)) -gt 0) {
-        $fileStream.Write($buffer, 0, $bytesRead)
-        $totalRead += $bytesRead
+while (($bytesRead = $reader.Read($buffer, 0, $buffer.Length)) -gt 0) {
+    $fileStream.Write($buffer, 0, $bytesRead)
+    $totalRead += $bytesRead
 
-        $percent = [math]::Round(($totalRead / $totalBytes) * 100)
-        $filled = [math]::Round($barLength * $percent / 100)
-        $empty = $barLength - $filled
-        $bar = ("*" * $filled) + ("-" * $empty) 
-        Write-Host "`r[$bar] $percent% " -NoNewline 
-        }
+     $percent = [math]::Round(($totalRead / $totalBytes) * 100)
+
+# Determine console width dynamically
+     $width = $Host.UI.RawUI.WindowSize.Width
+# Reserve ~10 chars for percent text and brackets
+     $barLength = [math]::Max(10, $width - 10)
+
+     $filled = [math]::Round($barLength * $percent / 100)
+     $empty  = $barLength - $filled
+
+     $barFilled = "*" * $filled
+     $barEmpty  = "-" * $empty
+
+# Draw colorful progress bar
+        Write-Host "`r[" -NoNewline
+        Write-Host $barFilled -NoNewline -ForegroundColor Green
+        Write-Host $barEmpty -NoNewline -ForegroundColor DarkGray
+        Write-Host "] $percent% " -NoNewline
+}
 
     $reader.Close()
     $fileStream.Close()
