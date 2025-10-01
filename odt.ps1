@@ -217,7 +217,9 @@ catch {
 }
 
 # ========== SUMMARY ==========
+
 $includedApps = $apps.Values | Where-Object { $excludeApps -notcontains $_ }
+
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green
 Write-Host "         SUMMARY OF YOUR SELECTIONS        " -ForegroundColor Green
@@ -226,6 +228,7 @@ Write-Host "Product:       $productDisplayName"
 Write-Host "Language:      $language"
 Write-Host "Channel:       $productChannel"
 Write-Host "Included Apps: Word, Excel, $($includedApps -join ', ')"
+
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
 
@@ -234,25 +237,25 @@ $response = Read-Host "Do you wish to continue? (y/n)"
 if ($response -eq "y" -or $response -eq "Y") {
     Write-Host "Continuing script execution..."
 
-
-# ---------- Install ----------
-if ($downloadSuccess) {
-    try {
-        Write-Host "Installing Office..." -ForegroundColor Yellow
-         & $setupPath /configure $configPath
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Office installation complete!" -ForegroundColor Green
-        } else {
-            Write-Host "Office installation failed! (Exit code $LASTEXITCODE)" -ForegroundColor Red
+    # ---------- Install ----------
+    if ($downloadSuccess) {
+        try {
+            Write-Host "Installing Office..." -ForegroundColor Yellow
+            & $setupPath /configure $configPath
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Office installation complete!" -ForegroundColor Green
+            } else {
+                Write-Host "Office installation failed! (Exit code $LASTEXITCODE)" -ForegroundColor Red
+            }
         }
-    }
-    catch {
-        Write-Host "ERROR: Installation failed - $_" -ForegroundColor Red
-    }
-}
-
+        catch {
+            Write-Host "ERROR: Installation failed - $_" -ForegroundColor Red
+        }
+    }   # <-- asta lipsea
 } else {
     Write-Host "Script execution has been stopped."
+    Start-Sleep -Seconds 1
+    exit
 }
 
 # ---------- Cleanup ----------
@@ -262,6 +265,4 @@ try {
 } catch {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
-Start-Sleep -Seconds 2
-
-
+Start-Sleep -Seconds 3
