@@ -118,8 +118,8 @@ Show-Menu "[2/3] Select language:" $languages
 $langChoice = Get-Choice $languages "Enter option (1-$($languages.Count))"
 $language = $languages[$langChoice]
 
-Show-Menu "[3/3] Select apps to exclude (comma separated, or Enter for none):" $apps
-$excludeApps = Get-MultiChoice $apps "Enter apps to exclude (e.g., 1,3) or press Enter for none"
+Show-Menu "[3/3] Select apps to exclude (Word and Excel will be installed by default):" $apps
+$excludeApps = Get-MultiChoice $apps "Enter apps to exclude (e.g.1,3) or press Enter for none"
 
 
 # ---------- Build XML ----------
@@ -217,6 +217,7 @@ catch {
 }
 
 # ========== SUMMARY ==========
+$includedApps = $apps.Values | Where-Object { $excludeApps -notcontains $_ }
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green
 Write-Host "         SUMMARY OF YOUR SELECTIONS        " -ForegroundColor Green
@@ -224,9 +225,15 @@ Write-Host "============================================" -ForegroundColor Green
 Write-Host "Product:       $productDisplayName"
 Write-Host "Language:      $language"
 Write-Host "Channel:       $productChannel"
-Write-Host "Excluded Apps: $($excludeApps -join ', ')" 
+Write-Host "Included Apps: Word Excell $($includedApps -join ', ')"
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
+
+$response = Read-Host "Do you wish to continue? (y/n)"
+
+if ($response -eq "y" -or $response -eq "Y") {
+    Write-Host "Continuing script execution..."
+
 
 # ---------- Install ----------
 if ($downloadSuccess) {
@@ -244,6 +251,10 @@ if ($downloadSuccess) {
     }
 }
 
+} else {
+    Write-Host "Script execution has been stopped."
+}
+
 # ---------- Cleanup ----------
 try {
     Remove-Item -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue
@@ -251,4 +262,4 @@ try {
 } catch {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 2
