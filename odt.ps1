@@ -225,7 +225,7 @@ Write-Host "============================================" -ForegroundColor Green
 Write-Host "Product:       $productDisplayName"
 Write-Host "Language:      $language"
 Write-Host "Channel:       $productChannel"
-Write-Host "Included Apps: Word, Excell, $($includedApps -join ', ')"
+Write-Host "Included Apps: Word, Excel, $($includedApps -join ', ')"
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
 
@@ -263,4 +263,5 @@ try {
     Write-Host "Temporary files were not deleted. Manual cleanup may be needed." -ForegroundColor Yellow
 }
 Start-Sleep -Seconds 2
+
 
