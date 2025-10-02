@@ -249,10 +249,15 @@ if ($downloadSuccess) {
 }
 
 # ---------- Cleanup ----------
-try {
-    Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction Stop
-    Write-Host "Temporary files deleted automatically." -ForegroundColor Cyan
-} catch {
-    Write-Host "ERROR: Temporary files could not be deleted automatically. Manual cleanup may be needed." -ForegroundColor Yellow
+if (Test-Path $tempFolder) {
+    try {
+        Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction Stop
+        Write-Host "Temporary files deleted automatically." -ForegroundColor Cyan
+    } catch {
+        Write-Host "ERROR: Temporary files could not be deleted automatically. Manual cleanup may be needed." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Temporary folder does not exist. Nothing to delete." -ForegroundColor Green
 }
-Start-Sleep -Seconds 2
+
+Start-Sleep -Seconds 3
