@@ -30,6 +30,35 @@ if (-not $myWindowsPrincipal.IsInRole($adminRole)) {
     }
 }
 
+
+# ---------- Preliminary Internet Check ----------
+Write-Host "Internet Checking..." -ForegroundColor yellow
+function Test-InternetConnection {
+    $maxRetries = 2
+    $timeout = 1000  # 1 secunda
+    for ($i=0; $i -le $maxRetries; $i++) {
+        try {
+            $req = [System.Net.WebRequest]::Create("https://microsoft.com")
+            $req.Timeout = $timeout
+            $req.Method = "HEAD"
+            $resp = $req.GetResponse()
+            $resp.Close()
+            return $true
+        } catch {
+            Start-Sleep -Milliseconds 200  # mic delay între încercări
+        }
+    }
+    return $false
+}
+
+if (-not (Test-InternetConnection)) {
+    Write-Host "Eroare: Nu există conexiune la internet sau host-ul microsoft.com nu este disponibil." -ForegroundColor Red
+    Write-Host "Scriptul se va închide in 5 secunde." -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
+    exit 1
+}
+
+
 # ---------- Header ----------
 Clear-Host
 Write-Host "============================================" -ForegroundColor DarkCyan
@@ -175,38 +204,62 @@ $xml.Save($configPath)
 Write-Host ""
 Write-Host "Configuration XML created: $configPath" -ForegroundColor Yellow
 
+
+function Test-InternetConnection {
+    try {
+        $req = [System.Net.WebRequest]::Create("https://microsoft.com")
+        $req.Timeout = 5000
+        $resp = $req.GetResponse()
+        $resp.Close()
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+
 # ---------- Download setup.exe ----------
 $setupUrl = "https://officecdn.microsoft.com/pr/wsus/setup.exe"
 $setupPath = "$tempFolder\setup.exe"
 $downloadSuccess = $false
 
-Write-Host "`nDownloading setup.exe..." -ForegroundColor Cyan
-Write-Host ""
+if (-not (Test-InternetConnection)) {
+    Write-Host "Eroare: Nu există conexiune la internet sau host-ul nu este disponibil." -ForegroundColor Red
+} else {
+    Write-Host "`nDownloading setup.exe..." -ForegroundColor Cyan
+    Write-Host ""
+    try {
+        $req = [System.Net.HttpWebRequest]::Create($setupUrl)
+        $resp = $req.GetResponse()
+        $totalBytes = $resp.ContentLength
+        $stream = $resp.GetResponseStream()
+        $fileStream = [System.IO.File]::Create($setupPath)
 
-$req = [System.Net.HttpWebRequest]::Create($setupUrl)
-$resp = $req.GetResponse()
-$totalBytes = $resp.ContentLength
-$stream = $resp.GetResponseStream()
-$fileStream = [System.IO.File]::Create($setupPath)
+        $buffer = New-Object byte[] 8192
+        $totalRead = 0
+        $bytesRead = 0
 
-$buffer = New-Object byte[] 8192
-$totalRead = 0
-$bytesRead = 0
+        while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $fileStream.Write($buffer, 0, $bytesRead)
+            $totalRead += $bytesRead
 
-while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-    $fileStream.Write($buffer, 0, $bytesRead)
-    $totalRead += $bytesRead
+            $percent = [math]::Round(($totalRead / $totalBytes) * 100)
+            Show-ProgressBar -Percent $percent
+        }
 
-    $percent = [math]::Round(($totalRead / $totalBytes) * 100)
-    Show-ProgressBar -Percent $percent
+        $fileStream.Close()
+        $stream.Close()
+        $downloadSuccess = $true
+        Write-Host ""
+        Write-Host "`nDownload complete: $setupPath" -ForegroundColor Yellow
+    }
+    catch [System.Net.WebException] {
+        Write-Host "`nEroare: Descărcarea nu a reușit. Verifică conexiunea la internet sau accesul la host." -ForegroundColor Red
+    }
+    catch {
+        Write-Host "`nA apărut o eroare neașteptată la descărcare: $_" -ForegroundColor Red
+    }
 }
-
-$fileStream.Close()
-$stream.Close()
-$downloadSuccess = $true
-
-Write-Host ""
-Write-Host "`nDownload complete: $setupPath" -ForegroundColor Yellow
 
 
 # ========== SUMMARY ==========
@@ -261,4 +314,3 @@ if (Test-Path $tempFolder) {
 }
 
 Start-Sleep -Seconds 3
-
