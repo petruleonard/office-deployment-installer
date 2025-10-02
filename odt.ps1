@@ -1,6 +1,6 @@
 
 # =============================================
-# Office Deployment Tool Installer (PS 5.1, sobru & corporate)
+# Office Deployment Tool Installer
 # =============================================
 
 param(
@@ -261,3 +261,4 @@ if (Test-Path $tempFolder) {
 }
 
 Start-Sleep -Seconds 3
+
