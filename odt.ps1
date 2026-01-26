@@ -12,7 +12,6 @@ param(
 )
 
 [System.Console]::CursorVisible = $false
-
 # Ensure we use modern TLS where available
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
@@ -113,7 +112,7 @@ if (-not (Test-InternetConnection)) {
 
     Write-Host "Eroare: Nu există conexiune la internet sau host-ul microsoft.com nu este disponibil." -ForegroundColor Red
 
-    Write-Host "Scriptul se va închide în 5 secunde." -ForegroundColor Yellow
+    Write-Host "Scriptul se va închide in 5 secunde." -ForegroundColor Yellow
 
     Start-Sleep -Seconds 5
 
@@ -161,7 +160,6 @@ function Show-Menu($title, $options) {
 
     Write-Host "--------------------------------------------"
 }
-
 function Get-Choice($options, $prompt) {
 
     while ($true) {
@@ -178,7 +176,6 @@ function Get-Choice($options, $prompt) {
 
     }
 }
-
 function Get-MultiChoice($options, $prompt) {
 
     $validKeys = $options.Keys | ForEach-Object { [string]$_ }
@@ -298,7 +295,7 @@ $excludeApps = Get-MultiChoice $apps "Enter apps to exclude (e.g.1,3) or press E
 
 # ---------- Build XML ----------
 
-tempFolder = "$env:TEMP\OfficeODT"
+$tempFolder = "$env:TEMP\OfficeODT"
 
 $configPath = "$tempFolder\config.xml"
 
