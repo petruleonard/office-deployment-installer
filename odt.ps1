@@ -5,7 +5,6 @@
 # =============================================
 
 
-
 param(
 
     [switch]$elevated
@@ -14,6 +13,8 @@ param(
 
 [System.Console]::CursorVisible = $false
 
+# Ensure we use modern TLS where available
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
 
 function Test-InternetConnection {
@@ -28,39 +29,22 @@ function Test-InternetConnection {
 
     )
 
-
-
     for ($i = 0; $i -le $Retries; $i++) {
-
         try {
-
             $req = [System.Net.WebRequest]::Create($Url)
-
             $req.Timeout = $TimeoutMs
-
             $req.Method = "HEAD"
-
             $resp = $req.GetResponse()
-
             $resp.Close()
-
             return $true
-
         } catch {
-
             Start-Sleep -Milliseconds 200
-
         }
-
     }
-
-
 
     return $false
 
 }
-
-
 
 function Start-ElevatedInstance {
 
@@ -72,18 +56,11 @@ function Start-ElevatedInstance {
 
     )
 
-
-
-    $newProcess = New-Object System.Diagnostics.ProcessStartInfo "PowerShell"
-
-    $newProcess.Arguments = "-ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
-
-    $newProcess.Verb = "runas"
-
-    [System.Diagnostics.Process]::Start($newProcess) | Out-Null
+    # Use Start-Process with -Verb RunAs for elevation (more reliable from PowerShell)
+    $argList = "-ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
+    Start-Process -FilePath "powershell.exe" -ArgumentList $argList -Verb RunAs -WorkingDirectory (Split-Path -Parent $ScriptPath)
 
 }
-
 
 
 # ---------- Initial Checks ----------
@@ -94,8 +71,6 @@ $myWindowsPrincipal = New-Object System.Security.Principal.WindowsPrincipal($myW
 
 $adminRole = [System.Security.Principal.WindowsBuiltInRole]::Administrator
 
-
-
 if (-not $myWindowsPrincipal.IsInRole($adminRole)) {
 
     Write-Host "Restarting script with administrator privileges..."
@@ -104,17 +79,19 @@ if (-not $myWindowsPrincipal.IsInRole($adminRole)) {
 
     cls
 
-
-
     try {
 
         $scriptPath = if ($PSCommandPath) { $PSCommandPath } else { $myInvocation.MyCommand.Definition }
 
         Start-ElevatedInstance -ScriptPath $scriptPath -Arguments "-elevated"
 
+        [System.Console]::CursorVisible = $true
+
         exit
 
     } catch {
+
+        [System.Console]::CursorVisible = $true
 
         Write-Host "Administrator rights were not granted. Script cannot continue." -ForegroundColor Red
 
@@ -123,29 +100,26 @@ if (-not $myWindowsPrincipal.IsInRole($adminRole)) {
         exit 1
 
     }
-
 }
-
 
 
 # ---------- Preliminary Internet Check ----------
 
 Write-Host "Internet Checking..." -ForegroundColor yellow
 
-
-
 if (-not (Test-InternetConnection)) {
+
+    [System.Console]::CursorVisible = $true
 
     Write-Host "Eroare: Nu există conexiune la internet sau host-ul microsoft.com nu este disponibil." -ForegroundColor Red
 
-    Write-Host "Scriptul se va închide in 5 secunde." -ForegroundColor Yellow
+    Write-Host "Scriptul se va închide în 5 secunde." -ForegroundColor Yellow
 
     Start-Sleep -Seconds 5
 
     exit 1
 
 }
-
 
 
 # ---------- Header ----------
@@ -159,7 +133,6 @@ Write-Host "      Office Deployment Tool Installer     " -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor DarkCyan
 
 Write-Host ""
-
 
 
 # ---------- UI Functions ----------
@@ -187,10 +160,7 @@ function Show-Menu($title, $options) {
     }
 
     Write-Host "--------------------------------------------"
-
 }
-
-
 
 function Get-Choice($options, $prompt) {
 
@@ -207,10 +177,7 @@ function Get-Choice($options, $prompt) {
         [Console]::SetCursorPosition(0, [Console]::CursorTop)
 
     }
-
 }
-
-
 
 function Get-MultiChoice($options, $prompt) {
 
@@ -239,9 +206,7 @@ function Get-MultiChoice($options, $prompt) {
         [Console]::SetCursorPosition(0, [Console]::CursorTop)
 
     }
-
 }
-
 
 
 # ---------- Progress Bar ----------
@@ -254,21 +219,15 @@ function Show-ProgressBar {
 
     )
 
-
-
     $barLength = 44  # Bara fixă aliniată cu meniurile
 
     $filledLength = [math]::Round($Percent / 100 * $barLength)
 
     $emptyLength = $barLength - $filledLength
 
-
-
     $filled = ('*' * $filledLength)
 
     $empty  = ('-' * $emptyLength)
-
-
 
     Write-Host -NoNewline "`r[" -ForegroundColor DarkCyan
 
@@ -283,14 +242,9 @@ function Show-ProgressBar {
 }
 
 
-
 # ---------- Data ----------
 
-
-
 $fixedApps = @("Word","Excel")
-
-
 
 $products = [ordered]@{
 
@@ -302,8 +256,6 @@ $products = [ordered]@{
 
 }
 
-
-
 $languages = [ordered]@{
 
     "1" = "MatchOS"
@@ -314,15 +266,11 @@ $languages = [ordered]@{
 
 }
 
-
-
 $apps = [ordered]@{
 
     "1"="Access"; "2"="Publisher"; "3"="Outlook"; "4"="PowerPoint"
 
 }
-
-
 
 # ---------- Steps ----------
 
@@ -338,39 +286,29 @@ $productPidKey = $products[$prodChoice].PidKey
 
 $productDisplayName = $products[$prodChoice].Name
 
-
-
 Show-Menu "[2/3] Select language:" $languages
 
 $langChoice = Get-Choice $languages "Enter option (1-$($languages.Count))"
 
 $language = $languages[$langChoice]
 
-
-
 Show-Menu "[3/3] Select apps to exclude (Word and Excel will be installed by default):" $apps
 
 $excludeApps = Get-MultiChoice $apps "Enter apps to exclude (e.g.1,3) or press Enter for none"
 
-
-
 # ---------- Build XML ----------
 
-$tempFolder = "$env:TEMP\OfficeODT"
+tempFolder = "$env:TEMP\OfficeODT"
 
 $configPath = "$tempFolder\config.xml"
 
 if (-not (Test-Path $tempFolder)) { New-Item -Path $tempFolder -ItemType Directory | Out-Null }
-
-
 
 $xml = New-Object System.Xml.XmlDocument
 
 $configNode = $xml.CreateElement("Configuration")
 
 $xml.AppendChild($configNode) | Out-Null
-
-
 
 $addNode = $xml.CreateElement("Add")
 
@@ -382,23 +320,17 @@ $addNode.SetAttribute("PIDKEY", $productPidKey)
 
 $configNode.AppendChild($addNode) | Out-Null
 
-
-
 $productNode = $xml.CreateElement("Product")
 
 $productNode.SetAttribute("ID", $productID)
 
 $addNode.AppendChild($productNode) | Out-Null
 
-
-
 $langNode = $xml.CreateElement("Language")
 
 $langNode.SetAttribute("ID", $language)
 
 $productNode.AppendChild($langNode) | Out-Null
-
-
 
 foreach ($app in $excludeApps + @("Groove","OneDrive","Lync","OneNote")) {
 
@@ -410,8 +342,6 @@ foreach ($app in $excludeApps + @("Groove","OneDrive","Lync","OneNote")) {
 
 }
 
-
-
 $displayNode = $xml.CreateElement("Display")
 
 $displayNode.SetAttribute("Level", "Full")
@@ -420,23 +350,17 @@ $displayNode.SetAttribute("AcceptEULA", "TRUE")
 
 $configNode.AppendChild($displayNode) | Out-Null
 
-
-
 $updatesNode = $xml.CreateElement("Updates")
 
 $updatesNode.SetAttribute("Enabled", "TRUE")
 
 $configNode.AppendChild($updatesNode) | Out-Null
 
-
-
 $xml.Save($configPath)
 
 Write-Host ""
 
 Write-Host "Configuration XML created: $configPath" -ForegroundColor Yellow
-
-
 
 # ---------- Download setup.exe ----------
 
@@ -445,8 +369,6 @@ $setupUrl = "https://officecdn.microsoft.com/pr/wsus/setup.exe"
 $setupPath = "$tempFolder\setup.exe"
 
 $downloadSuccess = $false
-
-
 
 if (-not (Test-InternetConnection)) {
 
@@ -466,11 +388,11 @@ if (-not (Test-InternetConnection)) {
 
         $totalBytes = $resp.ContentLength
 
+        if ($totalBytes -le 0) { $totalBytes = 0 }
+
         $stream = $resp.GetResponseStream()
 
         $fileStream = [System.IO.File]::Create($setupPath)
-
-
 
         $buffer = New-Object byte[] 8192
 
@@ -478,33 +400,40 @@ if (-not (Test-InternetConnection)) {
 
         $bytesRead = 0
 
+        try {
 
+            while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
 
-        while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                $fileStream.Write($buffer, 0, $bytesRead)
 
-            $fileStream.Write($buffer, 0, $bytesRead)
+                $totalRead += $bytesRead
 
-            $totalRead += $bytesRead
+                if ($totalBytes -gt 0) {
+                    $percent = [math]::Round(($totalRead / $totalBytes) * 100)
+                    if ($percent -gt 100) { $percent = 100 }
+                    Show-ProgressBar -Percent $percent
+                } else {
+                    # When Content-Length is unknown, show a simple progress with 0% and bytes downloaded
+                    Show-ProgressBar -Percent 0
+                }
 
+            }
 
+            $downloadSuccess = $true
 
-            $percent = [math]::Round(($totalRead / $totalBytes) * 100)
+            Write-Host ""
 
-            Show-ProgressBar -Percent $percent
+            Write-Host "`nDownload complete: $setupPath" -ForegroundColor Yellow
+
+        } finally {
+
+            if ($fileStream) { $fileStream.Close() }
+
+            if ($stream) { $stream.Close() }
+
+            if ($resp) { $resp.Close() }
 
         }
-
-
-
-        $fileStream.Close()
-
-        $stream.Close()
-
-        $downloadSuccess = $true
-
-        Write-Host ""
-
-        Write-Host "`nDownload complete: $setupPath" -ForegroundColor Yellow
 
     }
 
@@ -522,58 +451,41 @@ if (-not (Test-InternetConnection)) {
 
 }
 
-
-
-# ========== SUMMARY ==========
+# ========== SUMMARY ========== 
 
 $includedApps = $fixedApps + ($apps.Values | Where-Object { $excludeApps -notcontains $_ })
-
 Write-Host ""
-
 Write-Host "=============================================" -ForegroundColor Green
-
 Write-Host "         SUMMARY OF YOUR SELECTIONS        " -ForegroundColor Green
-
 Write-Host "=============================================" -ForegroundColor Green
-
 Write-Host "Product:       $productDisplayName"
-
 Write-Host "Language:      $language"
-
 Write-Host "Channel:       $productChannel"
-
 Write-Host "Included Apps: $($includedApps -join ', ')"
-
 Write-Host "=============================================" -ForegroundColor Green
-
 Write-Host ""
-
-
-
 $response = Read-Host "Do you wish to continue? (y/n)"
-
-
-
 if ($response -eq "y" -or $response -eq "Y") {
-
     Write-Host "Continuing script execution..."
-
-# ---------- Install ----------
-if ($downloadSuccess) {
-    try {
-        Write-Host "Installing Office..." -ForegroundColor Yellow
-         & $setupPath /configure $configPath
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Office installation complete!" -ForegroundColor Green
-        } else {
-            Write-Host "Office installation failed! (Exit code $LASTEXITCODE)" -ForegroundColor Red
+    # ---------- Install ----------
+    if ($downloadSuccess) {
+        try {
+            Write-Host "Installing Office..." -ForegroundColor Yellow
+            # Use Start-Process -Wait so we don't clean up temp files prematurely
+            $proc = Start-Process -FilePath $setupPath -ArgumentList "/configure", $configPath -Wait -PassThru -NoNewWindow
+            $exitCode = $proc.ExitCode
+            if ($exitCode -eq 0) {
+                Write-Host "Office installation complete!" -ForegroundColor Green
+            } else {
+                Write-Host "Office installation failed! (Exit code $exitCode)" -ForegroundColor Red
+            }
         }
+        catch {
+            Write-Host "ERROR: Installation failed - $_" -ForegroundColor Red
+        }
+    } else {
+        Write-Host "Setup executable was not downloaded. Cannot continue installation." -ForegroundColor Red
     }
-    catch {
-        Write-Host "ERROR: Installation failed - $_" -ForegroundColor Red
-    }
-}
-
 } else {
     Write-Host "Script execution has been stopped."
 }
@@ -590,5 +502,7 @@ if (Test-Path $tempFolder) {
     Write-Host "Temporary folder does not exist. Nothing to delete." -ForegroundColor Green
 }
 
-Start-Sleep -Seconds 3
+# Restore cursor visibility before exit
+[System.Console]::CursorVisible = $true
 
+Start-Sleep -Seconds 3
