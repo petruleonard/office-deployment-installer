@@ -61,6 +61,28 @@ function Test-InternetConnection {
 
 }
 
+function Start-ElevatedInstance {
+
+    param(
+
+        [string]$ScriptPath,
+
+        [string]$Arguments
+
+    )
+
+
+
+    $newProcess = New-Object System.Diagnostics.ProcessStartInfo "PowerShell"
+
+    $newProcess.Arguments = "-ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
+
+    $newProcess.Verb = "runas"
+
+    [System.Diagnostics.Process]::Start($newProcess) | Out-Null
+
+}
+
 # ---------- Initial Checks ----------
 
 $myWindowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
