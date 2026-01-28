@@ -12,25 +12,9 @@ param(
 )
 
 [System.Console]::CursorVisible = $false
-
 # Ensure we use modern TLS where available
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
-function Start-ElevatedInstance {
-
-    param(
-
-        [string]$ScriptPath,
-
-        [string]$Arguments
-
-    )
-
-    # Use Start-Process with -Verb RunAs for elevation (more reliable from PowerShell)
-    $argList = "-ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
-    Start-Process -FilePath "powershell.exe" -ArgumentList $argList -Verb RunAs -WorkingDirectory (Split-Path -Parent $ScriptPath)
-
-}
 
 function Test-InternetConnection {
 
@@ -71,17 +55,12 @@ function Start-ElevatedInstance {
 
     )
 
-
-
-    $newProcess = New-Object System.Diagnostics.ProcessStartInfo "PowerShell"
-
-    $newProcess.Arguments = "-ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
-
-    $newProcess.Verb = "runas"
-
-    [System.Diagnostics.Process]::Start($newProcess) | Out-Null
+    # Use Start-Process with -Verb RunAs for elevation (more reliable from PowerShell)
+    $argList = "-ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
+    Start-Process -FilePath "powershell.exe" -ArgumentList $argList -Verb RunAs -WorkingDirectory (Split-Path -Parent $ScriptPath)
 
 }
+
 
 # ---------- Initial Checks ----------
 
@@ -121,7 +100,6 @@ if (-not $myWindowsPrincipal.IsInRole($adminRole)) {
 
     }
 }
-
 
 # ---------- Preliminary Internet Check ----------
 
