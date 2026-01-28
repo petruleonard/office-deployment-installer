@@ -32,9 +32,6 @@ function Start-ElevatedInstance {
 
 }
 
-
-# ---------- Initial Checks ----------
-
 function Test-InternetConnection {
 
     param(
@@ -63,6 +60,8 @@ function Test-InternetConnection {
     return $false
 
 }
+
+# ---------- Initial Checks ----------
 
 $myWindowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
 
