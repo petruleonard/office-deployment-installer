@@ -48,7 +48,7 @@ function New-ConfigXml {
     )
 
     $excludeXml = ""
-    $allApps = @("Word", "Excel", "PowerPoint", "Access", "Outlook", "OneNote", "OneDrive", "Teams", "Lync", "Groove")
+    $allApps = @("Word", "Excel", "PowerPoint", "Access", "Outlook", "OneNote", "OneDrive", "Teams", "Lync", "Groove", "Publisher")
     foreach ($app in $allApps) {
         if ($ExcludedApps -contains $app) {
             $excludeXml += "      <ExcludeApp ID=`"$app`" />`n"
@@ -340,5 +340,6 @@ $btnInstall.Add_Click({
 
 # ── Run ──
 [System.Windows.Forms.Application]::Run($form)
+
 
 
