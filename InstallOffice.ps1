@@ -1,4 +1,4 @@
-﻿# Requires -Version 5.0
+
 # ──────────────────────────────────────────────────────────────────────────────
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -342,3 +342,4 @@ $btnInstall.Add_Click({
 
 # ── Run ──
 [System.Windows.Forms.Application]::Run($form)
+
