@@ -99,7 +99,7 @@ function Start-OfficeInstall {
         }
     }
     # Always exclude these bulk apps
-    $excluded += @("OneNote", "OneDrive", "Teams", "Lync", "Groove")
+    $excluded += @("OneNote", "OneDrive", "Teams", "Lync", "Groove", "Publisher")
 
     Write-Log ">>> Pornire instalare Office..."
     Write-Log "Produs   : $ProductID"
@@ -340,6 +340,7 @@ $btnInstall.Add_Click({
 
 # ── Run ──
 [System.Windows.Forms.Application]::Run($form)
+
 
 
 
